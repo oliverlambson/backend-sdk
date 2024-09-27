@@ -281,8 +281,26 @@ def import_resources_individually(
                     continue
 
                 asset_configs = {path: config}
-                for uuid in get_related_uuids(config):
-                    asset_configs.update(related_configs[uuid])
+                try:
+                    for uuid in get_related_uuids(config):
+                        try:
+                            asset_configs.update(related_configs[uuid])
+                        except KeyError as e:
+                            click.echo(
+                                click.style(
+                                    f"skipping {path}:{uuid}...\n{e}",
+                                    fg="bright_red",
+                                ),
+                            )
+                            continue
+                except KeyError as e:
+                    click.echo(
+                        click.style(
+                            f"skipping {path}:{config}...\n{e}",
+                            fg="bright_red",
+                        ),
+                    )
+                    continue
 
                 _logger.info("Importing %s", path.relative_to("bundle"))
                 contents = {str(k): yaml.dump(v) for k, v in asset_configs.items()}
@@ -411,15 +429,20 @@ def import_resources(
             if "overwrite=true" in value
         ]
         if not existing:
-            raise ex
-
-        existing_list = "\n".join("- " + name for name in existing)
-        click.echo(
-            click.style(
-                (
-                    "The following file(s) already exist. Pass ``--overwrite`` to "
-                    f"replace them.\n{existing_list}"
+            click.echo(
+                click.style(
+                    "skipping...",
+                    fg="bright_red",
                 ),
-                fg="bright_red",
-            ),
-        )
+            )
+        else:
+            existing_list = "\n".join("- " + name for name in existing)
+            click.echo(
+                click.style(
+                    (
+                        "The following file(s) already exist. Pass ``--overwrite`` to "
+                        f"replace them.\n{existing_list}"
+                    ),
+                    fg="bright_red",
+                ),
+            )

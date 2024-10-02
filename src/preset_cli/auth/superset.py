@@ -30,21 +30,33 @@ class UsernamePasswordAuth(Auth):  # pylint: disable=too-few-public-methods
 
     def auth(self) -> None:
         """
-        Login to get CSRF token and cookies.
+        Login to get CSRF token and JWT.
         """
-        data = {"username": self.username, "password": self.password}
 
-        response = self.session.get(self.baseurl / "login/")
-        soup = BeautifulSoup(response.text, "html.parser")
-        input_ = soup.find("input", {"id": "csrf_token"})
-        csrf_token = input_["value"] if input_ else None
-        if csrf_token:
-            self.session.headers["X-CSRFToken"] = csrf_token
-            data["csrf_token"] = csrf_token
-            self.csrf_token = csrf_token
+        # TODO: work-in-progress, not working atm...
+        payload = {
+            "username": self.username,
+            "password": self.password,
+            "provider": "db",
+            "refresh": False,
+        }
+        response = self.session.post(
+            self.baseurl / "api/v1/security/login",
+            json=payload,
+        )
+        data = response.json()
+        access_token = data["access_token"]
+        self.token = access_token
 
-        # set cookies
-        self.session.post(self.baseurl / "login/", data=data)
+        response = self.session.get(
+            self.baseurl / "api/v1/security/csrf_token/",
+            headers=self.get_headers(),
+        )
+        data = response.json()
+        result = data["result"]
+        csrf_token = result
+        self.session.headers["X-CSRFToken"] = csrf_token
+        self.csrf_token = csrf_token
 
 
 class SupersetJWTAuth(TokenAuth):  # pylint: disable=abstract-method

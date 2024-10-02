@@ -1162,7 +1162,31 @@ class SupersetClient:  # pylint: disable=too-many-public-methods
         """
         Return information about resource ownership.
         """
-        emails = {user["id"]: user["email"] for user in self.export_users()}
+        # emails = {user["id"]: user["email"] for user in self.export_users()}
+        # override
+        results = []
+        page = 0
+        while True:
+            query = prison.dumps(
+                {
+                    "columns": [
+                        "id",
+                        "email",
+                    ],
+                    "page": page,
+                    "page_size": MAX_PAGE_SIZE,
+                },
+            )
+            url = self.baseurl / "api/v1/security/users/" / "" % {"q": query}
+            response = self.session.get(url, params=query)
+            data = response.json()
+            result = data["result"]
+            if len(result) == 0:
+                break
+            results.extend(result)
+            page += 1
+        emails = {user["id"]: user["email"] for user in results}
+
         uuids = self.get_uuids(resource_name)
         name_key = {
             "dataset": "table_name",
